@@ -1,4 +1,5 @@
-from irc.irc_bot import callback,default_handlers
+from bot import callback
+from bot import default_handlers
 
 @callback('cap-ls')
 def req_sasl(self):

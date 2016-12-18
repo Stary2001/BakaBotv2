@@ -1,48 +1,46 @@
-from bot import Bot
+from bot import Bot, callback
+from command import Command, CommandCtx
 import eventlet
 from collections import namedtuple
-from functools import wraps
 
 eventlet.monkey_patch()
 
 IRCLine = namedtuple('IRCLine', ['sender', 'command', 'params'])
 
-default_handlers = {}
-def callback(cb, params = None):
+def command(l, name, params = None):
 	def a(f):
-		global default_handlers
-
-		@wraps(f)
-		def b(self, *args, **kwargs):
-			if params != None:
-				line = args[0]
-				my_args = []
-				p = None
-
-				for k in params:
-					if k.startswith("param/"):
-						k = int(k[len("param/"):])
-						p = line.params[k]
-					elif k == "sender":
-						p = line.sender
-					my_args.append(p)
-				return f(self, *my_args, **kwargs)
-			else:
-				return f(self, *args, **kwargs)
-
-		default_handlers[cb] = default_handlers.get(cb, []) + [b]
-
-		return b
+		c = Command(name, f)
+		l[name] = c
+		return c
 	return a
 
 import irc.sasl
 
+class IRCUser():
+	""" user = internal name, nick = display name """
+	def __init__(self, nick):
+		self.user = nick
+		self.nick = nick
+
+	def __str__(self):
+		return self.nick
+
+class IRCChannel():
+	def __init__(self, chan):
+		self.name = chan
+
+	def __str__(self):
+		return self.name
+
 class IRCBot(Bot):
+	default_handlers = {}
+
 	def __init__(self, name):
+		self.type = 'irc'
 		super().__init__(name)
 		self.caps = {}
-		self.handlers = default_handlers.copy()
 		self.authenticated = False
+		self.load_plugin('util')
 
 	def readlines(self, recv_buffer=4096, delim=b'\r\n'):
 		buffer = b''
@@ -85,18 +83,19 @@ class IRCBot(Bot):
 
 		return IRCLine(sender=sender, command=cmd, params=params)
 
-	def handle(self, n, *args):
-		if n in self.handlers:
-			for a in self.handlers[n]:
-				a(self, *args)
-
 	def send_line(self, l, *args, **kwargs):
 		l = l.format(*args, **kwargs)
 		print(">>>" + l)
 		self.sock.send((l+'\r\n').encode('utf-8'))
 
+	def send_message(self, target, text):
+		self.send_line("PRIVMSG {} :{}", target, text)
+
 	def join(self, chan):
 		self.send_line("JOIN {}", chan)
+
+	def quit(self, text):
+		self.send_line("QUIT {}", text)
 
 	def run_loop(self):
 		self.sock = eventlet.connect((self.config.get('server.host'), self.config.get('server.port')))
@@ -108,7 +107,7 @@ class IRCBot(Bot):
 			cmd = line.command.lower()
 			self.handle(cmd, line)
 
-	@callback('cap', ['param/1', 'param/2'])
+	@callback('irc/cap', ['param/1', 'param/2'])
 	def cb_cap(self, event, what):
 		if event == 'LS':
 			self.caps = what.split(' ')
@@ -116,31 +115,29 @@ class IRCBot(Bot):
 		elif event == 'ACK':
 			self.handle('has-cap-' + what)
 
-	@callback('cap-done')
+	@callback('irc/cap-done')
 	def cap_done(self):
 		if self.config.get('irc.password'):
 			self.send_line("PASS {pass}".format())
 		self.send_line("NICK {name}", name=self.config.get('irc.nickname'))
 		self.send_line("USER {user} * * :{real}", user=self.config.get('irc.username'), real=self.config.get('irc.realname'))
 
-	@callback('ping', ['param/0'])
+	@callback('irc/ping', ['param/0'])
 	def cb_ping(self, code):
 		self.send_line("PONG :{code}", code=code)
 
-	@callback('376', [])
+	@callback('irc/376', [])
 	def end_of_motd(self):
 		self.handle('connected')
 
-	@callback('connected')
+	@callback('irc/connected')
 	def connected(self):
 		if self.config.get('irc.autojoin'):
 			for c in self.config.get('irc.autojoin'):
 				self.join(c)
 
-	@callback('privmsg', ['sender', 'param/0', 'param/1'])
+	@callback('irc/privmsg', ['sender', 'param/0', 'param/1'])
 	def command_handler(self, sender, target, content):
-		print(sender, target, content)
-		prefixes = self.config.get('irc.prefixes')
-		for p in prefixes:
-			if content.startswith(p):
-				print("command?")
+		sender = IRCUser(sender)
+		target = IRCChannel(target)
+		self.handle('message', sender, target, content)
