@@ -1,0 +1,3 @@
+__pycache__
+conf/*.yml
+conf/networks/*.yml
