@@ -33,8 +33,12 @@ class IRCBot(Bot):
 		super().__init__(name)
 		self.caps = {}
 		self.authenticated = False
-		self.load_plugin('util')
-		self.load_plugin('admin')
+		autoload = self.config.get("autoload")
+		if autoload != None:
+			for p in autoload:
+			  self.load_plugin(p)
+		else:
+			self.load_plugin("admin")
 
 	def readlines(self, recv_buffer=4096, delim=b'\r\n'):
 		buffer = b''
