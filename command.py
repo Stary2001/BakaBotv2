@@ -5,6 +5,10 @@ def command(l, name, params = None, flags = None, bot = None):
 		return c
 	return a
 
+class AllGroup():
+	def check(self, acc, chan):
+		return True
+
 class CommandNotFoundException(Exception):
 	def __init__(self, name):
 		super().__init__()

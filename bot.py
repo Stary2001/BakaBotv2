@@ -2,7 +2,7 @@ import eventlet
 from config import Config
 import importlib, inspect
 from functools import wraps
-from command import CommandCtx, CommandFlags, CommandNotFoundException
+from command import CommandCtx, CommandFlags, CommandNotFoundException, AllGroup
 
 default_handlers = {'irc': {}, 'bot': {}}
 
@@ -57,6 +57,8 @@ class Bot:
 		self.plugins = {}
 		self.plugin_modules = {}
 		self.commands = {}
+		self.users = {}
+		self.channels = {}
 
 	def run(self, pool):
 		pool.spawn_n(lambda: self.run_loop())
@@ -74,11 +76,27 @@ class Bot:
 				plug = self.plugins[n]
 				for k in plug.commands:
 					self.commands[k] = plug.commands[k]
+					cmd = self.commands[k]
+					cmd.allowed_groups = self.config.get('permissions.{}.groups'.format(k), [])
+					cmd.allowed_groups = list(map(lambda x: self.get_group(x), cmd.allowed_groups))
+					cmd.allowed_users = self.config.get('permissions.{}.users'.format(k), [])
 
 	def handle(self, n, *args):
 		if n in self.handlers:
 			for a in self.handlers[n]:
 				a(self, *args)
+
+	def check_permissions(self, acc, cmd, target):
+		print(acc)
+		for g in cmd.allowed_groups:
+			if g.check(acc, target):
+				return True
+
+		for u in cmd.allowed_users:
+			if acc == u:
+				return True
+
+		return False
 
 	@callback('message')
 	def command_handler(self, sender, target, content):
@@ -102,33 +120,50 @@ class Bot:
 						else:
 							name = c
 
-						if name in self.commands:
-							cmd = self.commands[name]
-							if cmd.type == None or cmd.type == self.type:
-								if other == None:
-									other = []
-								elif cmd.flags != None and CommandFlags.ONE_PARAM in cmd.flags:
-									other = [other]
-								else:
-									other = other.split(' ')
-
-								other += ret
-								ctx = CommandCtx(self, target, sender)
-								ret = self.commands[name](ctx, *other)
-								if ret == None:
-									ret = []
-							else:
-								# wrong type!
-								pass
-						else:
+						if not name in self.commands:
 							raise CommandNotFoundException(name)
+
+						cmd = self.commands[name]
+						if not self.check_permissions(sender.account, cmd, target):
+							raise NoPermissionsException(name)
+
+						if cmd.type == None or cmd.type == self.type:
+							if other == None:
+								other = []
+							elif cmd.flags != None and CommandFlags.ONE_PARAM in cmd.flags:
+								other = [other]
+							else:
+								other = other.split(' ')
+
+							other += ret
+							ctx = CommandCtx(self, target, sender)
+							ret = self.commands[name](ctx, *other)
+							if ret == None:
+								ret = []
+						else:
+							# wrong type!
+							pass
+							
 					if ret != None:
 						for a in ret:
 							self.send_message(target, str(a))
 				except Exception as e:
 					self.send_message(target, 'Exception thrown: "{}"'.format(str(e)))
 				
+	def get_group(self, g):
+		if g.startswith('special/'):
+			g = g[g.find('special/')+len('special/'):]
+			if g == 'all':
+				return AllGroup()
+			else:
+				return self.get_special_group(g)
+		else:
+			return self.groups[g]
 
+	def get_special_group(self, g):
+		""" override this """
+		pass
+	
 	def send_message(self, target, text):
 		"""
 			send_message: Sends a message 'text' to 'target'.
