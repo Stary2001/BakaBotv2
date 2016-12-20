@@ -2,7 +2,7 @@ import eventlet
 from config import Config
 import importlib, inspect
 from functools import wraps
-from command import CommandCtx
+from command import CommandCtx, CommandFlags, CommandNotFoundException
 
 default_handlers = {'irc': {}, 'bot': {}}
 
@@ -58,15 +58,18 @@ class Bot:
 		self.plugin_modules = {}
 		self.commands = {}
 
-
 	def run(self, pool):
 		pool.spawn_n(lambda: self.run_loop())
 
 	def load_plugin(self, n):
-		self.plugin_modules[n] = importlib.import_module('irc.plugins.' + n)
+		if n in self.plugin_modules:
+			importlib.reload(self.plugin_modules[n])
+		else:
+			self.plugin_modules[n] = importlib.import_module('irc.plugins.' + n)
+
 		loaded_plugins = inspect.getmembers(self.plugin_modules[n], inspect.isclass)
 		for p in loaded_plugins:
-			if p[0] != 'Plugin':
+			if p[1].__bases__[0].__name__ == 'Plugin':
 				self.plugins[n] = p[1](self)
 				plug = self.plugins[n]
 				for k in plug.commands:
@@ -82,20 +85,53 @@ class Bot:
 		prefixes = self.config.get('irc.prefixes')
 		for p in prefixes:
 			if content.startswith(p):
-				a = content.find(' ')
-				other = None
+				content = content[len(p):]
+				cmds = content.split('|')
+				cmds = list(map(lambda x: x.strip(), cmds))
 
-				if a == -1: # remove prefix..
-					name = content[len(p):]
-				else:
-					name = content[len(p):a]
-					other = content[a+1:]
+				print(cmds)
+
+				ret = []
+				try:
+					for c in cmds:
+						pos = c.find(' ')
+						other = None
+						if pos != -1:
+							name = c[:pos]
+							other = c[pos+1:]
+						else:
+							name = c
+
+						if name in self.commands:
+							cmd = self.commands[name]
+							if cmd.type == None or cmd.type == self.type:
+								if other == None:
+									other = []
+								elif cmd.flags != None and CommandFlags.ONE_PARAM in cmd.flags:
+									other = [other]
+								else:
+									other = other.split(' ')
+
+								other += ret
+								ctx = CommandCtx(self, target, sender)
+								
+								ret = self.commands[name](ctx, *other)
+								if ret == None:
+									ret = []
+							else:
+								# wrong type!
+								pass
+						else:
+							raise CommandNotFoundException(name)
+					if ret != None:
+						for a in ret:
+							self.send_message(target, str(a))
+				except Exception as e:
+					self.send_message(target, 'Exception thrown: "{}"'.format(str(e)))
 				
-				if name in self.commands:
-					if other == None:
-						other = []
-					else:
-						other = other.split(' ')
 
-					ctx = CommandCtx(self, target, sender)
-					self.commands[name](ctx, *other)
+	def send_message(self, target, text):
+		"""
+			send_message: Sends a message 'text' to 'target'.
+		"""
+		pass

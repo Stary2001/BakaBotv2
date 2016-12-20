@@ -1,4 +1,4 @@
-from irc.irc_bot import command
+from command import command
 from irc.plugin import Plugin
 
 class UtilPlugin(Plugin):
@@ -9,8 +9,4 @@ class UtilPlugin(Plugin):
 
 	@command(commands, 'ping')
 	def command_ping(ctx):
-		ctx.reply('pong')
-
-	@command(commands, 'quit')
-	def command_quit(ctx):
-		ctx.quit('hi mom')
+		return ['pong']

@@ -7,13 +7,6 @@ eventlet.monkey_patch()
 
 IRCLine = namedtuple('IRCLine', ['sender', 'command', 'params'])
 
-def command(l, name, params = None):
-	def a(f):
-		c = Command(name, f)
-		l[name] = c
-		return c
-	return a
-
 import irc.sasl
 
 class IRCUser():
@@ -41,6 +34,7 @@ class IRCBot(Bot):
 		self.caps = {}
 		self.authenticated = False
 		self.load_plugin('util')
+		self.load_plugin('admin')
 
 	def readlines(self, recv_buffer=4096, delim=b'\r\n'):
 		buffer = b''
@@ -95,7 +89,7 @@ class IRCBot(Bot):
 		self.send_line("JOIN {}", chan)
 
 	def quit(self, text):
-		self.send_line("QUIT {}", text)
+		self.send_line("QUIT :{}", text)
 
 	def run_loop(self):
 		self.sock = eventlet.connect((self.config.get('server.host'), self.config.get('server.port')))
