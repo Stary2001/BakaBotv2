@@ -114,7 +114,6 @@ class Bot:
 
 								other += ret
 								ctx = CommandCtx(self, target, sender)
-								
 								ret = self.commands[name](ctx, *other)
 								if ret == None:
 									ret = []
