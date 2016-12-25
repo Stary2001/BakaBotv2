@@ -39,9 +39,19 @@ class IRCChannel():
 		self.name = chan
 		self.users = {}
 		self.user_modes = {}
-
+		self.modes = {}
 	def __str__(self):
 		return self.name
+
+class IRCServer():
+	def __init__(self):
+		self.name = None
+		self.version = None
+		self.usermodes = None
+		self.chanmodes = None
+		self.supports_whox = False
+		self.modes_per_line = 0
+		self.modemap = {}
 
 class IRCBot(Bot):
 	default_handlers = {}
@@ -50,6 +60,9 @@ class IRCBot(Bot):
 		self.type = 'irc'
 		super().__init__(name)
 		self.caps = {}
+		self.mode_map = {}
+		self.server = IRCServer()
+
 		self.authenticated = False
 		autoload = self.config.get("autoload")
 		if autoload != None:
@@ -150,6 +163,37 @@ class IRCBot(Bot):
 		self.send_line("NICK {name}", name=self.nick)
 		self.send_line("USER {user} * * :{real}", user=self.config.get('irc.username'), real=self.config.get('irc.realname'))
 
+	@callback('irc/004', ['param/1', 'param/2', 'param/3'])
+	def cb_myinfo(self, srv_name, srv_version, usermodes):
+		self.server.name = srv_name
+		self.server.version = srv_version
+		self.server.usermodes = list(usermodes)
+		# we get channel modes in 005.
+
+	@callback('irc/005')
+	def cb_isupport(self, line):
+		for s in line.params:
+			if s.startswith("CHANMODES"):
+				self.server.chanmodes = {}
+				s = s[s.find('=')+1:]
+				s = s.split(',')
+				self.server.chanmodes['list'] = list(s[0])
+				self.server.chanmodes['alwaysparam'] = list(s[1])
+				self.server.chanmodes['setparam'] = list(s[2])
+				self.server.chanmodes['neverparam'] = list(s[3])
+			elif s.startswith("PREFIX"):
+				s = s.split('=')[1]
+				prefixes = s[s.find(')')+1:]
+				modes = s[1:s.find(')')]
+				self.server.mode_map = dict(zip(modes, prefixes))
+				self.server.chanmodes['list'] += modes
+			elif s == 'WHOX':
+				self.server.supports_whox = True
+			elif s.startswith('NETWORK'):
+				self.server.name = s.split('=')[1]
+			elif s.startswith('MODES'):
+				self.server.modes_per_line = int(s.split('=')[1])
+
 	@callback('irc/ping', ['param/0'])
 	def cb_ping(self, code):
 		self.send_line("PONG :{code}", code=code)
@@ -213,6 +257,35 @@ class IRCBot(Bot):
 			user.channels.append(channel)
 			chan = self.get_channel(channel)
 			chan.users[nick] = user
-			chan.user_modes[nick] = modes
+			chan.user_modes[nick] = list(modes)
 
-		print(channel, ident, host, server, nick, modes, realname_maybe, account_maybe)
+		#print(channel, ident, host, server, nick, modes, realname_maybe, account_maybe)
+
+	@callback('irc/mode')
+	def cb_mode(self, line):
+		target = line.params[0]
+		modes = line.params[1:]
+		if not target.startswith('#'):
+			return # usermodes are todo
+
+		modes_iter = iter(modes)
+		for o in modes_iter:
+			for oo in o:
+				add = o[0] == '+'
+
+				if oo in self.server.mode_map:
+					c = self.get_channel(target)
+					nick = next(modes_iter)
+					mode_char = self.server.mode_map[oo]
+
+					if add:
+						if mode_char in c.user_modes[nick]:
+							c.user_modes[nick].append(mode_char)
+					else:
+						if mode_char in c.user_modes[nick]:
+							c.user_modes[nick].remove(mode_char)
+
+					continue
+	# todo: channelmode syncing of o/v works, need to implement banlists, +k etc
+
+
