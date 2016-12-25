@@ -2,7 +2,7 @@ import eventlet
 from config import Config
 import importlib, inspect
 from functools import wraps
-from command import CommandCtx, CommandFlags, CommandNotFoundException, AllGroup
+from command import CommandCtx, CommandFlags, CommandNotFoundError, NoPermissionsError, AllGroup
 
 default_handlers = {'irc': {}, 'bot': {}}
 
@@ -86,14 +86,13 @@ class Bot:
 			for a in self.handlers[n]:
 				a(self, *args)
 
-	def check_permissions(self, acc, cmd, target):
-		print(acc)
+	def check_permissions(self, user, cmd, target):
 		for g in cmd.allowed_groups:
-			if g.check(acc, target):
+			if g.check(user, target):
 				return True
 
 		for u in cmd.allowed_users:
-			if acc == u:
+			if user.account == u:
 				return True
 
 		return False
@@ -121,11 +120,11 @@ class Bot:
 							name = c
 
 						if not name in self.commands:
-							raise CommandNotFoundException(name)
+							raise CommandNotFoundError(name)
 
 						cmd = self.commands[name]
-						if not self.check_permissions(sender.account, cmd, target):
-							raise NoPermissionsException(name)
+						if not self.check_permissions(sender, cmd, target):
+							raise NoPermissionsError(name)
 
 						if cmd.type == None or cmd.type == self.type:
 							if other == None:
@@ -163,7 +162,7 @@ class Bot:
 	def get_special_group(self, g):
 		""" override this """
 		pass
-	
+
 	def send_message(self, target, text):
 		"""
 			send_message: Sends a message 'text' to 'target'.

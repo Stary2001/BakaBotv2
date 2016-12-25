@@ -9,6 +9,16 @@ IRCLine = namedtuple('IRCLine', ['sender', 'command', 'params'])
 
 import irc.sasl
 
+class ModeGroup:
+	def __init__(self, bot, mode):
+		self.mode_char = bot.mode_map[mode]
+		self.bot = bot
+
+	def check(self, user, chan):
+		if user.nick in chan.user_modes and self.mode_char in chan.user_modes[user.nick]:
+			return True
+		return False
+
 class IRCUser():
 	""" user = internal name, nick = display name """
 	def __init__(self, nick, account=None):
@@ -115,6 +125,16 @@ class IRCBot(Bot):
 			cmd = line.command.lower()
 			self.handle(cmd, line)
 
+	def get_special_group(self, g):
+		if g == 'op':
+			return ModeGroup(self, 'o')
+		elif g == 'voice':
+			return ModeGroup(self, 'v')
+		elif g == 'hop':
+			return ModeGroup(self, 'h')
+		else:
+			return None
+
 	@callback('irc/cap', ['param/1', 'param/2'])
 	def cb_cap(self, event, what):
 		if event == 'LS':
@@ -163,13 +183,17 @@ class IRCBot(Bot):
 
 	@callback('irc/join', ['param/0', 'sender'])
 	def cb_join(self, chan, user):
-		print(chan, user)
-
 		if user.startswith(self.nick):
 			# ok, WE joined.
 			self.send_line("WHO " + chan + " %cuhnarsf")
-		print(chan)
-
+		else:
+			user = user[user.find('!'):]
+			u = self.get_user(user)
+			u.channels.append(chan)
+			c = self.get_channel(chan)
+			c.users[user] = u
+			c.user_modes[user] = []
+			self.send_line("WHO " + u + " %cuhnarsf")
 
 	@callback('irc/352', ['param/1', 'param/2', 'param/3', 'param/4', 'param/5', 'param/6', 'param/7'])
 	@callback('irc/354', ['param/1', 'param/2', 'param/3', 'param/4', 'param/5', 'param/6', 'param/7', 'param/8'])

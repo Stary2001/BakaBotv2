@@ -9,13 +9,21 @@ class AllGroup():
 	def check(self, acc, chan):
 		return True
 
-class CommandNotFoundException(Exception):
+class CommandNotFoundError(Exception):
 	def __init__(self, name):
 		super().__init__()
 		self.name = name
 
 	def __str__(self):
 		return "Command '{}' not found!".format(self.name)
+
+class NoPermissionsError(Exception):
+	def __init__(self, name):
+		super().__init__()
+		self.name = name
+
+	def __str__(self):
+		return "No permissions for '{}'!".format(self.name)
 
 class Command():
 	def __init__(self, name, f, bot=None, flags=None):
