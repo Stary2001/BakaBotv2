@@ -23,29 +23,36 @@ class AdminPlugin(Plugin):
 	def command_part(ctx, name):
 		ctx.bot.part(name)
 
-	@command(commands, 'auto')
-	def command_auto(ctx, what, meth, name=None):
-		k = None
-		if what == 'join':
-			k = 'irc.autojoin'
-		elif what == 'load':
-			k = 'autoload'
-		else:
-			return
+	@command(commands, 'config')
+	def command_list(ctx, meth, what, val=None):
+		def usage():
+			ctx.reply("Usage: auto [load|join] [add|del|list] (value?)")
 
-		l = ctx.bot.config.get(k)
-		if l == None:
-			ctx.reply("List doesn't exist?")
+		k = what
+		v = ctx.bot.config.get(k)
+		if v == None:
+			if meth == 'add':
+				v = []
+				ctx.bot.config.set(k, v)
 
-		if meth == "add" and name != None:
-			l.append(name)
+		if meth == 'save':
+
+		elif meth == 'get':
+			ctx.reply('{}: {}'.format(k, repr(ctx.bot.config.get(k))))
+		elif val != None:
+			if meth == 'set':
+				ctx.reply('set {} to {}'.format(k, val))
+				ctx.bot.config.set(k, val)
+			elif meth == "add":
+				ctx.reply("{} added to {}".format(val, k))
+				v.append(val)
+			elif meth == "del":
+				ctx.reply("{} deleted from {}".format(val, k))
+				v.remove(val)
+			else:
+				usage()
+				return
+
 			ctx.bot.config.save()
-			ctx.reply("{} added.".format(name))
-		elif meth == "del" and name != None:
-			l.remove(name)
-			ctx.bot.config.save()
-			ctx.reply("{} deleted.".format(name))
-		elif meth == "list":
-			ctx.reply(", ".join(l))
 		else:
-			ctx.reply("Usage: auto [load|join] [add|del|list] (name?)")
+			usage()
