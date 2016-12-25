@@ -35,9 +35,7 @@ class AdminPlugin(Plugin):
 				v = []
 				ctx.bot.config.set(k, v)
 
-		if meth == 'save':
-
-		elif meth == 'get':
+		if meth == 'get':
 			ctx.reply('{}: {}'.format(k, repr(ctx.bot.config.get(k))))
 		elif val != None:
 			if meth == 'set':
