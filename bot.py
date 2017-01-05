@@ -91,7 +91,7 @@ class Bot:
 			if g.check(user, target):
 				return True
 
-		cmd.allowed_users = self.config.get('permissions.{}.users'.format(k), [])
+		cmd.allowed_users = self.config.get('permissions.{}.users'.format(cmd.name), [])
 		for u in cmd.allowed_users:
 			if user.account == u:
 				return True
