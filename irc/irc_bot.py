@@ -237,7 +237,7 @@ class IRCBot(Bot):
 			c = self.get_channel(chan)
 			c.users[user] = u
 			c.user_modes[user] = []
-			self.send_line("WHO " + u + " %cuhnarsf")
+			self.send_line("WHO " + u.nick + " %cuhnarsf")
 
 	@callback('irc/352', ['param/1', 'param/2', 'param/3', 'param/4', 'param/5', 'param/6', 'param/7'])
 	@callback('irc/354', ['param/1', 'param/2', 'param/3', 'param/4', 'param/5', 'param/6', 'param/7', 'param/8'])
