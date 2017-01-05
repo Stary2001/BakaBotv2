@@ -67,7 +67,7 @@ class Bot:
 		if n in self.plugin_modules:
 			importlib.reload(self.plugin_modules[n])
 		else:
-			self.plugin_modules[n] = importlib.import_module('irc.plugins.' + n)
+			self.plugin_modules[n] = importlib.import_module('plugins.' + n)
 
 		loaded_plugins = inspect.getmembers(self.plugin_modules[n], inspect.isclass)
 		for p in loaded_plugins:

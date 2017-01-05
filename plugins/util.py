@@ -1,5 +1,5 @@
 from command import command, CommandFlags
-from irc.plugin import Plugin
+from plugin import Plugin
 import random
 from eventlet import greenthread
 
