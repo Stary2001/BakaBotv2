@@ -76,10 +76,7 @@ class Bot:
 				plug = self.plugins[n]
 				for k in plug.commands:
 					self.commands[k] = plug.commands[k]
-					cmd = self.commands[k]
-					cmd.allowed_groups = self.config.get('permissions.{}.groups'.format(k), [])
-					cmd.allowed_groups = list(map(lambda x: self.get_group(x), cmd.allowed_groups))
-					cmd.allowed_users = self.config.get('permissions.{}.users'.format(k), [])
+					
 
 	def handle(self, n, *args):
 		if n in self.handlers:
@@ -87,10 +84,14 @@ class Bot:
 				a(self, *args)
 
 	def check_permissions(self, user, cmd, target):
-		for g in cmd.allowed_groups:
+		allowed_groups = self.config.get('permissions.{}.groups'.format(cmd.name), [])
+		allowed_groups = map(lambda x: self.get_group(x), allowed_groups)
+
+		for g in allowed_groups:
 			if g.check(user, target):
 				return True
 
+		cmd.allowed_users = self.config.get('permissions.{}.users'.format(k), [])
 		for u in cmd.allowed_users:
 			if user.account == u:
 				return True
