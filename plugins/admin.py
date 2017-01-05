@@ -24,9 +24,9 @@ class AdminPlugin(Plugin):
 		ctx.bot.part(name)
 
 	@command(commands, 'config')
-	def command_list(ctx, meth, what, val=None):
+	def command_config(ctx, meth, what, val=None):
 		def usage():
-			ctx.reply("Usage: auto [load|join] [add|del|list] (value?)")
+			ctx.reply("Usage: config [get|set|add|del] (value?)")
 
 		k = what
 		v = ctx.bot.config.get(k)
@@ -34,6 +34,8 @@ class AdminPlugin(Plugin):
 			if meth == 'add':
 				v = []
 				ctx.bot.config.set(k, v)
+			else:
+				ctx.reply("Does not exist!")
 
 		if meth == 'get':
 			ctx.reply('{}: {}'.format(k, repr(ctx.bot.config.get(k))))
