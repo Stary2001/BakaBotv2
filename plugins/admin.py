@@ -56,3 +56,7 @@ class AdminPlugin(Plugin):
 			ctx.bot.config.save()
 		else:
 			usage()
+
+	@command(commands, 'plugins')
+	def command_plugins(ctx):
+		ctx.reply(",".join(list(ctx.bot.plugins.keys())))
