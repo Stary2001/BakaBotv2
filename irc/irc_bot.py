@@ -257,7 +257,8 @@ class IRCBot(Bot):
 			user.channels.append(channel)
 			chan = self.get_channel(channel)
 			chan.users[nick] = user
-			chan.user_modes[nick] = list(modes)
+			chan.user_modes[nick] += list(modes)
+			chan.user_modes[nick] = list(set(chan.user_modes[nick])) # eliminate dupes
 
 		#print(channel, ident, host, server, nick, modes, realname_maybe, account_maybe)
 
@@ -277,6 +278,9 @@ class IRCBot(Bot):
 					c = self.get_channel(target)
 					nick = next(modes_iter)
 					mode_char = self.server.mode_map[oo]
+
+					if not nick in c.user_modes:
+						c.user_modes[nick] = []
 
 					if add:
 						if mode_char in c.user_modes[nick]:
