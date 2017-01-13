@@ -231,7 +231,7 @@ class IRCBot(Bot):
 			# ok, WE joined.
 			self.send_line("WHO " + chan + " %cuhnarsf")
 		else:
-			user = user[user.find('!'):]
+			user = user[:user.find('!')]
 			u = self.get_user(user)
 			u.channels.append(chan)
 			c = self.get_channel(chan)
