@@ -59,8 +59,10 @@ class Bot:
 		self.commands = {}
 		self.users = {}
 		self.channels = {}
+		self.pool = None
 
 	def run(self, pool):
+		self.pool = pool
 		pool.spawn_n(lambda: self.run_loop())
 
 	def load_plugin(self, n):
@@ -76,7 +78,7 @@ class Bot:
 				plug = self.plugins[n]
 				for k in plug.commands:
 					self.commands[k] = plug.commands[k]
-					
+
 
 	def handle(self, n, *args):
 		if n in self.handlers:
@@ -143,13 +145,13 @@ class Bot:
 						else:
 							# wrong type!
 							pass
-							
+
 					if ret != None:
 						for a in ret:
 							self.send_message(target, str(a))
 				except Exception as e:
 					self.send_message(target, 'Exception thrown: "{}"'.format(str(e)))
-				
+
 	def get_group(self, g):
 		if g.startswith('special/'):
 			g = g[g.find('special/')+len('special/'):]

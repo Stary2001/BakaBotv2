@@ -2,6 +2,7 @@ from bot import Bot, callback
 from command import Command, CommandCtx
 import eventlet
 from collections import namedtuple
+import time
 
 eventlet.monkey_patch()
 
@@ -28,6 +29,7 @@ class IRCUser():
 		self.realname = None
 		self.ident = None
 		self.host = None
+		self.synced = False
 
 		self.channels = []
 
@@ -72,6 +74,8 @@ class IRCBot(Bot):
 			self.load_plugin("admin")
 
 		self.nick = self.config.get('irc.nickname')
+		self.who_queue = eventlet.queue.Queue()
+		self.who_wait = 2
 
 	def readlines(self, recv_buffer=4096, delim=b'\r\n'):
 		buffer = b''
@@ -129,6 +133,8 @@ class IRCBot(Bot):
 		self.send_line("QUIT :{}", text)
 
 	def run_loop(self):
+		self.who_gthread = self.pool.spawn_n(lambda: self.who_thread())
+
 		self.sock = eventlet.connect((self.config.get('server.host'), self.config.get('server.port')))
 		self.send_line("CAP LS")
 
@@ -137,6 +143,12 @@ class IRCBot(Bot):
 			line = self.parse_line(line)
 			cmd = line.command.lower()
 			self.handle(cmd, line)
+
+	def who_thread(self):
+		while True:
+			item = self.who_queue.get()
+			self.send_line("WHO " + item[1] + " %cuhnarsf")
+			time.sleep(self.who_wait)
 
 	def get_special_group(self, g):
 		if g == 'op':
@@ -229,7 +241,7 @@ class IRCBot(Bot):
 	def cb_join(self, chan, user):
 		if user.startswith(self.nick):
 			# ok, WE joined.
-			self.send_line("WHO " + chan + " %cuhnarsf")
+			self.who_queue.put(('chan', chan))
 		else:
 			user = user[:user.find('!')]
 			u = self.get_user(user)
@@ -237,7 +249,8 @@ class IRCBot(Bot):
 			c = self.get_channel(chan)
 			c.users[user] = u
 			c.user_modes[user] = []
-			self.send_line("WHO " + u.nick + " %cuhnarsf")
+			if not u.synced:
+				self.who_queue.put(('user', u.nick, chan))
 
 	@callback('irc/352', ['param/1', 'param/2', 'param/3', 'param/4', 'param/5', 'param/6', 'param/7'])
 	@callback('irc/354', ['param/1', 'param/2', 'param/3', 'param/4', 'param/5', 'param/6', 'param/7', 'param/8'])
@@ -263,6 +276,8 @@ class IRCBot(Bot):
 			chan.user_modes[nick] += list(modes)
 			chan.user_modes[nick] = list(set(chan.user_modes[nick])) # eliminate dupes
 
+			user.synced = True
+
 		#print(channel, ident, host, server, nick, modes, realname_maybe, account_maybe)
 
 	@callback('irc/mode')
@@ -282,11 +297,12 @@ class IRCBot(Bot):
 					nick = next(modes_iter)
 					mode_char = self.server.mode_map[oo]
 
+					# not really needed, but ok
 					if not nick in c.user_modes:
 						c.user_modes[nick] = []
 
 					if add:
-						if mode_char in c.user_modes[nick]:
+						if not mode_char in c.user_modes[nick]:
 							c.user_modes[nick].append(mode_char)
 					else:
 						if mode_char in c.user_modes[nick]:
