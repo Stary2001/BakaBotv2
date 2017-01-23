@@ -32,6 +32,7 @@ class IRCUser():
 		self.synced = False
 
 		self.channels = []
+		self.groups = {}
 
 	def __str__(self):
 		return self.nick
@@ -39,7 +40,7 @@ class IRCUser():
 class IRCChannel():
 	def __init__(self, chan):
 		self.name = chan
-		self.users = {}
+		self.users = []
 		self.user_modes = {}
 		self.modes = {}
 	def __str__(self):
@@ -136,6 +137,9 @@ class IRCBot(Bot):
 		self.who_gthread = self.pool.spawn_n(lambda: self.who_thread())
 
 		self.sock = eventlet.connect((self.config.get('server.host'), self.config.get('server.port')))
+		#if self.config.get('server.ssl') == True:
+		#	self.sock = ssl.wrap_socket(self.sock)
+
 		self.send_line("CAP LS")
 
 		for line in self.readlines():
@@ -232,25 +236,32 @@ class IRCBot(Bot):
 
 	@callback('irc/privmsg', ['sender', 'param/0', 'param/1'])
 	def command_handler(self, sender, target, content):
-		sender = sender[:sender.find('!')] # hack, TODO: proper user parser or something
-		sender = self.get_user(sender)
 		target = self.get_channel(target)
 		self.handle('message', sender, target, content)
 
 	@callback('irc/join', ['param/0', 'sender'])
 	def cb_join(self, chan, user):
-		if user.startswith(self.nick):
+		if user.nick == self.nick:
 			# ok, WE joined.
 			self.who_queue.put(('chan', chan))
 		else:
-			user = user[:user.find('!')]
-			u = self.get_user(user)
-			u.channels.append(chan)
+			user.channels.append(chan)
 			c = self.get_channel(chan)
-			c.users[user] = u
+			c.users.append(user)
 			c.user_modes[user] = []
-			if not u.synced:
-				self.who_queue.put(('user', u.nick, chan))
+			if not user.synced:
+				self.who_queue.put(('user', user.nick, chan))
+
+	@callback('irc/part', ['param/0', 'sender'])
+	def cb_part(self, chan, user):
+		if user.nick == self.nick:
+			# ok, we ... left?
+			pass
+		else:
+			user.channels.remove(chan)
+			c = self.get_channel(chan)
+			c.users.remove(user)
+			del c.user_modes[user.nick]
 
 	@callback('irc/352', ['param/1', 'param/2', 'param/3', 'param/4', 'param/5', 'param/6', 'param/7'])
 	@callback('irc/354', ['param/1', 'param/2', 'param/3', 'param/4', 'param/5', 'param/6', 'param/7', 'param/8'])
@@ -269,7 +280,7 @@ class IRCBot(Bot):
 		if channel != "*":
 			user.channels.append(channel)
 			chan = self.get_channel(channel)
-			chan.users[nick] = user
+			chan.users.append(user)
 			if not nick in chan.user_modes:
 				chan.user_modes[nick] = []
 

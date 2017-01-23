@@ -15,7 +15,7 @@ def callback(cb, params = None):
 	else:
 		namespace = cb[:cb.find('/')]
 		cb = cb[cb.find('/')+1:]
-	
+
 	if namespace not in default_handlers:
 		default_handlers[namespace] = {}
 	handlers = default_handlers[namespace]
@@ -33,7 +33,8 @@ def callback(cb, params = None):
 						k = int(k[len("param/"):])
 						p = line.params[k]
 					elif k == "sender":
-						p = line.sender
+						idx = line.sender.find('!')
+						p = self.get_user(line.sender[:idx])
 					my_args.append(p)
 				return f(self, *my_args, **kwargs)
 			else:
