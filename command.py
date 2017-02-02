@@ -1,6 +1,6 @@
-def command(l, name, params = None, flags = None, bot = None):
+def command(l, name, params = None, flags = None, bot = None, is_async = False):
 	def a(f):
-		c = Command(name, f, bot=bot, flags=flags)
+		c = Command(name, f, bot=bot, flags=flags, is_async=is_async)
 		l[name] = c
 		return c
 	return a
@@ -26,11 +26,12 @@ class NoPermissionsError(Exception):
 		return "No permissions for '{}'!".format(self.name)
 
 class Command():
-	def __init__(self, name, f, bot=None, flags=None):
+	def __init__(self, name, f, bot=None, flags=None, is_async=False):
 		self.name = name
 		self.f = f
 		self.flags = flags
 		self.type = bot
+		self.is_async = is_async
 
 	def __call__(self, *args, **kwargs):
 		return self.f(*args, **kwargs)

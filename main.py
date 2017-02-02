@@ -2,9 +2,7 @@
 
 from config import Config
 from irc.irc_bot import IRCBot
-import eventlet
-
-eventlet.monkey_patch()
+import asyncio
 
 bots = {}
 config = None
@@ -17,9 +15,8 @@ except FileNotFoundError:
 for n in config.get('networks'):
 	bots[n] = IRCBot(n)
 
-pool = eventlet.GreenPool(100)
-
+loop = asyncio.get_event_loop()
 for n in bots:
-	bots[n].run(pool)
+	bots[n].run(loop)
 
-pool.waitall()
+loop.run_forever()

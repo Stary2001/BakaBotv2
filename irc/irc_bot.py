@@ -1,10 +1,9 @@
 from bot import Bot, callback
 from command import Command, CommandCtx
-import eventlet
+import asyncio
+import socket
 from collections import namedtuple
 import time
-
-eventlet.monkey_patch()
 
 IRCLine = namedtuple('IRCLine', ['sender', 'command', 'params'])
 
@@ -75,20 +74,8 @@ class IRCBot(Bot):
 			self.load_plugin("admin")
 
 		self.nick = self.config.get('irc.nickname')
-		self.who_queue = eventlet.queue.Queue()
+		self.who_queue = asyncio.Queue()
 		self.who_wait = 2
-
-	def readlines(self, recv_buffer=4096, delim=b'\r\n'):
-		buffer = b''
-		data = True
-		while data and self.running:
-			data = self.sock.recv(recv_buffer)
-			buffer += data
-
-			while buffer.find(delim) != -1:
-				line, buffer = buffer.split(delim, 1)
-				yield line.decode('utf-8')
-		return
 
 	def parse_line(self, line):
 		read_sender = False
@@ -122,7 +109,7 @@ class IRCBot(Bot):
 	def send_line(self, l, *args, **kwargs):
 		l = l.format(*args, **kwargs)
 		print(">>>" + l)
-		self.sock.send((l+'\r\n').encode('utf-8'))
+		self.sock_writer.write((l+'\r\n').encode('utf-8'))
 
 	def send_message(self, target, text):
 		self.send_line("PRIVMSG {} :{}", target, text)
@@ -133,26 +120,34 @@ class IRCBot(Bot):
 	def quit(self, text):
 		self.send_line("QUIT :{}", text)
 
-	def run_loop(self):
-		self.who_gthread = self.pool.spawn_n(lambda: self.who_thread())
+	async def run_loop(self):
+		self.who_coro = self.loop.create_task(self.who_thread())
 
-		self.sock = eventlet.connect((self.config.get('server.host'), self.config.get('server.port')))
+		self.sock_reader, self.sock_writer = await asyncio.open_connection(host=self.config.get('server.host'), port=self.config.get('server.port'), ssl=self.config.get('server.ssl'))
 		#if self.config.get('server.ssl') == True:
 		#	self.sock = ssl.wrap_socket(self.sock)
 
 		self.send_line("CAP LS")
 
-		for line in self.readlines():
+		while True:
+			line = await self.sock_reader.readline()
+			if line == b'':
+				break
+
+			line = line.decode('utf-8')
+			line = line.strip()
 			print("<<< " + line)
 			line = self.parse_line(line)
-			cmd = line.command.lower()
-			self.handle(cmd, line)
 
-	def who_thread(self):
+			cmd = line.command.lower()
+			await self.handle(cmd, line)
+
+	async def who_thread(self):
 		while True:
-			item = self.who_queue.get()
+			item = await self.who_queue.get()
+			print("Coro woke up!!")
 			self.send_line("WHO " + item[1] + " %cuhnarsf")
-			time.sleep(self.who_wait)
+			await asyncio.sleep(self.who_wait)
 
 	def get_special_group(self, g):
 		if g == 'op':
@@ -164,13 +159,13 @@ class IRCBot(Bot):
 		else:
 			return None
 
-	@callback('irc/cap', ['param/1', 'param/2'])
+	@callback('irc/cap', ['param/1', 'param/2'], is_async=True)
 	def cb_cap(self, event, what):
 		if event == 'LS':
 			self.caps = what.split(' ')
-			self.handle('cap-ls')
+			return self.handle('cap-ls')
 		elif event == 'ACK':
-			self.handle('has-cap-' + what)
+			return self.handle('has-cap-' + what)
 
 	@callback('irc/cap-done')
 	def cap_done(self):
@@ -214,9 +209,9 @@ class IRCBot(Bot):
 	def cb_ping(self, code):
 		self.send_line("PONG :{code}", code=code)
 
-	@callback('irc/376', [])
+	@callback('irc/376', [], is_async=True)
 	def end_of_motd(self):
-		self.handle('connected')
+		return self.handle('connected')
 
 	@callback('irc/connected')
 	def connected(self):
@@ -234,23 +229,26 @@ class IRCBot(Bot):
 			self.channels[chan] = IRCChannel(chan)
 		return self.channels[chan]
 
-	@callback('irc/privmsg', ['sender', 'param/0', 'param/1'])
+	@callback('irc/privmsg', ['sender', 'param/0', 'param/1'], is_async=True)
 	def command_handler(self, sender, target, content):
 		target = self.get_channel(target)
-		self.handle('message', sender, target, content)
+		return self.handle('message', sender, target, content)
 
-	@callback('irc/join', ['param/0', 'sender'])
+	@callback('irc/join', ['param/0', 'sender'], is_async = True)
 	def cb_join(self, chan, user):
 		if user.nick == self.nick:
 			# ok, WE joined.
-			self.who_queue.put(('chan', chan))
+			print("pushing onto sync list." + chan)
+			print(asyncio.get_event_loop())
+			return self.who_queue.put(('chan', chan))
 		else:
 			user.channels.append(chan)
 			c = self.get_channel(chan)
 			c.users.append(user)
 			c.user_modes[user] = []
 			if not user.synced:
-				self.who_queue.put(('user', user.nick, chan))
+				print("pushing onto sync list." + user.nick)
+				return self.who_queue.put(('user', user.nick, chan))
 
 	@callback('irc/part', ['param/0', 'sender'])
 	def cb_part(self, chan, user):

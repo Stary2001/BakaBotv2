@@ -1,12 +1,15 @@
-import eventlet
+import asyncio
 from config import Config
 import importlib, inspect
 from functools import wraps
 from command import CommandCtx, CommandFlags, CommandNotFoundError, NoPermissionsError, AllGroup
+from collections import namedtuple
+
+Handler = namedtuple('Handler', ['is_async', 'f'])
 
 default_handlers = {'irc': {}, 'bot': {}}
 
-def callback(cb, params = None):
+def callback(cb, params = None, is_async=False):
 	global default_handlers
 	namespace = None
 
@@ -40,7 +43,7 @@ def callback(cb, params = None):
 			else:
 				return f(self, *args, **kwargs)
 
-		handlers[cb] = handlers.get(cb, []) + [b]
+		handlers[cb] = handlers.get(cb, []) + [Handler(f=b, is_async=is_async)]
 
 		return b
 	return a
@@ -49,7 +52,7 @@ class Bot:
 	def __init__(self, name):
 		global default_handlers
 		self.name = name
-		self.event_queue = eventlet.queue.Queue()
+		self.event_queue = asyncio.Queue()
 		self.config = Config('conf/networks/{name}.yml'.format(name=name))
 		self.running = True
 		self.handlers = default_handlers['bot'].copy()
@@ -62,9 +65,9 @@ class Bot:
 		self.channels = {}
 		self.pool = None
 
-	def run(self, pool):
-		self.pool = pool
-		pool.spawn_n(lambda: self.run_loop())
+	def run(self, loop):
+		self.loop = loop
+		loop.create_task(self.run_loop())
 
 	def load_plugin(self, n):
 		if n in self.plugin_modules:
@@ -81,10 +84,13 @@ class Bot:
 					self.commands[k] = plug.commands[k]
 
 
-	def handle(self, n, *args):
+	async def handle(self, n, *args):
 		if n in self.handlers:
 			for a in self.handlers[n]:
-				a(self, *args)
+				if a.is_async:
+					await a.f(self, *args)
+				else:
+					a.f(self, *args)
 
 	def check_permissions(self, user, cmd, target):
 		allowed_groups = self.config.get('permissions.{}.groups'.format(cmd.name), [])
@@ -95,14 +101,16 @@ class Bot:
 				return True
 
 		cmd.allowed_users = self.config.get('permissions.{}.users'.format(cmd.name), [])
+
 		for u in cmd.allowed_users:
+			print(user.account)
 			if user.account == u:
 				return True
 
 		return False
 
-	@callback('message')
-	def command_handler(self, sender, target, content):
+	@callback('message', is_async = True)
+	async def command_handler(self, sender, target, content):
 		prefixes = self.config.get('irc.prefixes')
 		for p in prefixes:
 			if content.startswith(p):
@@ -140,7 +148,12 @@ class Bot:
 
 							other += ret
 							ctx = CommandCtx(self, target, sender)
-							ret = self.commands[name](ctx, *other)
+
+							if cmd.is_async:
+								ret = await cmd.f(ctx, *other)
+							else:
+								ret = cmd.f(ctx, *other)
+
 							if ret == None:
 								ret = []
 						else:
