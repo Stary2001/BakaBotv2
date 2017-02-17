@@ -255,7 +255,8 @@ class IRCBot(Bot):
 			user.channels.remove(chan)
 			c = self.get_channel(chan)
 			c.users.remove(user)
-			del c.user_modes[user.nick]
+			if user.nick in c.user_modes:
+					del c.user_modes[user.nick]
 
 	@callback('irc/quit', ['sender'])
 	def cb_quit(self, user):
@@ -266,7 +267,8 @@ class IRCBot(Bot):
 			for chan in user.channels:
 				c = self.get_channel(chan)
 				c.users.remove(user)
-				del c.user_modes[user.nick]
+				if user.nick in c.user_modes:
+					del c.user_modes[user.nick]
 			del self.users[user.nick]
 
 	@callback('irc/352', ['param/1', 'param/2', 'param/3', 'param/4', 'param/5', 'param/6', 'param/7'])
