@@ -88,7 +88,9 @@ class Bot:
 		if n in self.handlers:
 			for a in self.handlers[n]:
 				if a.is_async:
-					await a.f(self, *args)
+					coro = a.f(self, *args)
+					if coro != None:
+						await coro
 				else:
 					a.f(self, *args)
 

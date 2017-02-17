@@ -145,7 +145,6 @@ class IRCBot(Bot):
 	async def who_thread(self):
 		while True:
 			item = await self.who_queue.get()
-			print("Coro woke up!!")
 			self.send_line("WHO " + item[1] + " %cuhnarsf")
 			await asyncio.sleep(self.who_wait)
 
@@ -238,8 +237,6 @@ class IRCBot(Bot):
 	def cb_join(self, chan, user):
 		if user.nick == self.nick:
 			# ok, WE joined.
-			print("pushing onto sync list." + chan)
-			print(asyncio.get_event_loop())
 			return self.who_queue.put(('chan', chan))
 		else:
 			user.channels.append(chan)
@@ -247,7 +244,6 @@ class IRCBot(Bot):
 			c.users.append(user)
 			c.user_modes[user] = []
 			if not user.synced:
-				print("pushing onto sync list." + user.nick)
 				return self.who_queue.put(('user', user.nick, chan))
 
 	@callback('irc/part', ['param/0', 'sender'])
@@ -260,6 +256,18 @@ class IRCBot(Bot):
 			c = self.get_channel(chan)
 			c.users.remove(user)
 			del c.user_modes[user.nick]
+
+	@callback('irc/quit', ['sender'])
+	def cb_quit(self, user):
+		if user.nick == self.nick:
+			# ok, we ... QUIT??
+			pass
+		else:
+			for chan in user.channels:
+				c = self.get_channel(chan)
+				c.users.remove(user)
+				del c.user_modes[user.nick]
+			del self.users[user.nick]
 
 	@callback('irc/352', ['param/1', 'param/2', 'param/3', 'param/4', 'param/5', 'param/6', 'param/7'])
 	@callback('irc/354', ['param/1', 'param/2', 'param/3', 'param/4', 'param/5', 'param/6', 'param/7', 'param/8'])
