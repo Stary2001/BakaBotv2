@@ -17,9 +17,9 @@ class FactoidPlugin(Plugin):
 	def command_set_factoid(ctx, name):
 		text = ctx.bot.config.get('factoids.{}'.format(name))
 		if text != None:
-			return [text]
+			ctx.reply(text)
 		else:
-			return "Factoid '{}' not found!".format(name)
+			ctx.reply("Factoid '{}' not found!".format(name))
 
 	@command(commands, 'delf')
 	def command_del_factoid(ctx, name, *value):
