@@ -13,7 +13,7 @@ class SedPlugin(Plugin):
 
         self.scrollback = {}
         bot.handlers['message'] = [Handler(f=lambda self2,a,b,c: self.cb(a,b,c), is_async=True)] + bot.handlers['message']
-    
+
     queue_size = 100
 
     async def cb(self, sender, target, content):
@@ -35,7 +35,7 @@ class SedPlugin(Plugin):
 
             while True:
                 i = content.find('/', i)
-                
+
                 if i != -1:
                     if content[i-1] == '\\' and num_escapes % 2 == 0:
                         i=i+1
@@ -82,8 +82,11 @@ class SedPlugin(Plugin):
                     for index, line in enumerate(q):
                         if re.search(expr, line[2]) != None:
                             m = re.sub(expr, replacement, line[2], count=count)
-                            q[index] = (line[0], line[1], str(m))
-                            self.bot.send_message(target, m)
+                            q[index] = (line[0], line[1], str(m), line[3])
+                            if line[3] == 'msg':
+                                self.bot.send_message(target, "<{}> {}".format(line[0], m))
+                            else:
+                                self.bot.send_message(target, "* {} {}".format(line[0], m))
                             return
                 except re.error as e:
                     self.bot.send_message(target, "You broke it: {}".format(e))
@@ -92,6 +95,6 @@ class SedPlugin(Plugin):
 
         if len(q) == self.queue_size:
             q.popright()
-        q.appendleft((sender, target, content))
+        q.appendleft((sender, target, content, 'msg'))
 
         return True
