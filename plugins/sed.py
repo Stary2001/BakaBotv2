@@ -69,16 +69,19 @@ class SedPlugin(Plugin):
                 if replacement == None:
                     replacement = content[match_pos:]
 
-                print(match, replacement, flags)
                 count = 1
-                if flags != None and 'g' in flags:
-                    count = 0
+                re_flags = 0
 
+                if flags != None:
+                    if 'g' in flags:
+                        count = 0
+                    if 'i' in flags:
+                        re_flags = re.IGNORECASE
                 try:
-                    expr = re.compile(match)
+                    expr = re.compile(match, flags=re_flags)
                     for index, line in enumerate(q):
-                        if re.search(expr, line[2]) != None:
-                            m = re.sub(expr, replacement, line[2], count=count)
+                        if re.search(expr, line[2], flags=re_flags) != None:
+                            m = re.sub(expr, replacement, line[2], count=count, flags=re_flags)
                             q[index] = (line[0], line[1], str(m))
                             self.bot.send_message(target, m)
                             return
