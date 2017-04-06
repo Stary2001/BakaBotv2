@@ -80,8 +80,8 @@ class SedPlugin(Plugin):
                 try:
                     expr = re.compile(match, flags=re_flags)
                     for index, line in enumerate(q):
-                        if re.search(expr, line[2], flags=re_flags) != None:
-                            m = re.sub(expr, replacement, line[2], count=count, flags=re_flags)
+                        if re.search(expr, line[2]) != None:
+                            m = re.sub(expr, replacement, line[2], count=count)
                             q[index] = (line[0], line[1], str(m))
                             self.bot.send_message(target, m)
                             return
