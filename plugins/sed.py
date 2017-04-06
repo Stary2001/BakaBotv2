@@ -84,9 +84,9 @@ class SedPlugin(Plugin):
                             m = re.sub(expr, replacement, line[2], count=count)
                             q[index] = (line[0], line[1], str(m), line[3])
                             if line[3] == 'msg':
-	                            self.bot.send_message(target, "<{}> {}".format(line[0], line[2]))
-							else:
-								self.bot.send_message(target, "* {} {}".format(line[0], line[2]))
+                                self.bot.send_message(target, "<{}> {}".format(line[0], m))
+                            else:
+                                self.bot.send_message(target, "* {} {}".format(line[0], m))
                             return
                 except re.error as e:
                     self.bot.send_message(target, "You broke it: {}".format(e))
