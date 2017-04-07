@@ -94,7 +94,7 @@ class SedPlugin(Plugin):
             return # Don't log sed-like messages.
 
         if len(q) == self.queue_size:
-            q.popright()
+            q.pop()
         q.appendleft((sender, target, content, 'msg'))
 
         return True
