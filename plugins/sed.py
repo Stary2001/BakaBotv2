@@ -82,7 +82,9 @@ class SedPlugin(Plugin):
                     for index, line in enumerate(q):
                         if re.search(expr, line[2]) != None:
                             m = re.sub(expr, replacement, line[2], count=count)
-                            q[index] = (line[0], line[1], str(m), line[3])
+							if len(q) == self.queue_size:
+								q.pop()
+							q.appendleft((line[0], line[1], str(m), line[3]))
                             if line[3] == 'msg':
                                 self.bot.send_message(target, "<{}> {}".format(line[0], m))
                             else:
