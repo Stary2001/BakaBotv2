@@ -1,5 +1,6 @@
 from bot import Bot, callback
 from command import Command, CommandCtx
+from config import Config
 import asyncio
 import socket
 from collections import namedtuple
@@ -61,18 +62,14 @@ class IRCBot(Bot):
 	def __init__(self, name):
 		self.type = 'irc'
 		super().__init__(name)
+		self.config = Config('conf/networks/{name}.yml'.format(name=name))
+		self.init_plugins()
+
 		self.caps = {}
 		self.mode_map = {}
 		self.server = IRCServer()
 
 		self.authenticated = False
-		autoload = self.config.get("autoload")
-		if autoload != None:
-			for p in autoload:
-			  self.load_plugin(p)
-		else:
-			self.load_plugin("admin")
-
 		self.nick = self.config.get('irc.nickname')
 		self.who_queue = asyncio.Queue()
 		self.who_wait = 2
@@ -112,7 +109,7 @@ class IRCBot(Bot):
 		self.sock_writer.write((l+'\r\n').encode('utf-8'))
 
 	def send_message(self, target, text):
-		self.send_line("PRIVMSG {} :{}", target, text)
+		self.send_line("PRIVMSG {} :{}", target, str(text))
 
 	def join(self, chan):
 		self.send_line("JOIN {}", chan)
@@ -157,6 +154,10 @@ class IRCBot(Bot):
 			return ModeGroup(self, 'h')
 		else:
 			return None
+
+	def user_has_id(self, user, id):
+		if user.account == id:
+			return True
 
 	@callback('irc/cap', ['param/1', 'param/2'], is_async=True)
 	def cb_cap(self, event, what):
