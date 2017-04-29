@@ -1,3 +1,4 @@
+
 from command import command, CommandFlags
 from plugin import Plugin
 
@@ -24,25 +25,33 @@ class AdminPlugin(Plugin):
 		ctx.bot.part(name)
 
 	@command(commands, 'config')
-	def command_config(ctx, meth, what, val=None):
+	def command_config(ctx, where, meth, what, val=None):
 		def usage():
-			ctx.reply("Usage: config [get|set|add|del] (value?)")
+			ctx.reply("Usage: config [local|shared] [get|set|add|del] (value?)")
+
+		if where == 'local':
+			conf = ctx.bot.local_config
+		else:
+			conf = ctx.bot.shared_config
+		else:
+			usage()
+			return
 
 		k = what
-		v = ctx.bot.config.get(k)
+		v = conf.get(k)
 		if v == None:
 			if meth == 'add':
 				v = []
-				ctx.bot.config.set(k, v)
+				conf.set(k, v)
 			else:
 				ctx.reply("Does not exist!")
 
 		if meth == 'get':
-			ctx.reply('{}: {}'.format(k, repr(ctx.bot.config.get(k))))
+			ctx.reply('{}: {}'.format(k, repr(conf.get(k))))
 		elif val != None:
 			if meth == 'set':
 				ctx.reply('set {} to {}'.format(k, val))
-				ctx.bot.config.set(k, val)
+				conf.set(k, val)
 			elif meth == "add":
 				ctx.reply("{} added to {}".format(val, k))
 				v.append(val)
@@ -53,7 +62,7 @@ class AdminPlugin(Plugin):
 				usage()
 				return
 
-			ctx.bot.config.save()
+			conf.save()
 		else:
 			usage()
 

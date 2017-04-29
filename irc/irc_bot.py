@@ -1,5 +1,6 @@
 from bot import Bot, callback
 from command import Command, CommandCtx
+from config import Config
 import asyncio
 import socket
 from collections import namedtuple
@@ -58,22 +59,20 @@ class IRCServer():
 class IRCBot(Bot):
 	default_handlers = {}
 
-	def __init__(self, name):
+	def __init__(self, name, shared_config):
 		self.type = 'irc'
 		super().__init__(name)
+
+		self.shared_config = shared_config
+		self.local_config = Config('conf/networks/{name}.yml'.format(name=name))
+		self.init_plugins()
+
 		self.caps = {}
 		self.mode_map = {}
 		self.server = IRCServer()
 
 		self.authenticated = False
-		autoload = self.config.get("autoload")
-		if autoload != None:
-			for p in autoload:
-			  self.load_plugin(p)
-		else:
-			self.load_plugin("admin")
-
-		self.nick = self.config.get('irc.nickname')
+		self.nick = self.local_config.get('irc.nickname')
 		self.who_queue = asyncio.Queue()
 		self.who_wait = 2
 
@@ -112,7 +111,7 @@ class IRCBot(Bot):
 		self.sock_writer.write((l+'\r\n').encode('utf-8'))
 
 	def send_message(self, target, text):
-		self.send_line("PRIVMSG {} :{}", target, text)
+		self.send_line("PRIVMSG {} :{}", target, str(text))
 
 	def join(self, chan):
 		self.send_line("JOIN {}", chan)
@@ -123,9 +122,10 @@ class IRCBot(Bot):
 	async def run_loop(self):
 		self.who_coro = self.loop.create_task(self.who_thread())
 
-		self.sock_reader, self.sock_writer = await asyncio.open_connection(host=self.config.get('server.host'), port=self.config.get('server.port'), ssl=self.config.get('server.ssl'))
-		#if self.config.get('server.ssl') == True:
-		#	self.sock = ssl.wrap_socket(self.sock)
+		host = self.local_config.get('irc.server.host')
+		port = self.local_config.get('irc.server.port')
+		use_ssl = self.local_config.get('irc.server.ssl')
+		self.sock_reader, self.sock_writer = await asyncio.open_connection(host=host, port=port, ssl=use_ssl)
 
 		self.send_line("CAP LS")
 
@@ -158,6 +158,10 @@ class IRCBot(Bot):
 		else:
 			return None
 
+	def user_has_id(self, user, id):
+		if user.account == id:
+			return True
+
 	@callback('irc/cap', ['param/1', 'param/2'], is_async=True)
 	def cb_cap(self, event, what):
 		if event == 'LS':
@@ -168,10 +172,12 @@ class IRCBot(Bot):
 
 	@callback('irc/cap-done')
 	def cap_done(self):
-		if self.config.get('irc.password'):
+		if self.local_config.get('irc.password'):
 			self.send_line("PASS {pass}".format())
 		self.send_line("NICK {name}", name=self.nick)
-		self.send_line("USER {user} * * :{real}", user=self.config.get('irc.username'), real=self.config.get('irc.realname'))
+		irc_username = self.local_config.get('irc.username')
+		irc_realname = self.local_config.get('irc.realname')
+		self.send_line("USER {user} * * :{real}", user=irc_username, real=irc_username)
 
 	@callback('irc/004', ['param/1', 'param/2', 'param/3'])
 	def cb_myinfo(self, srv_name, srv_version, usermodes):
@@ -214,8 +220,8 @@ class IRCBot(Bot):
 
 	@callback('irc/connected')
 	def connected(self):
-		if self.config.get('irc.autojoin'):
-			for c in self.config.get('irc.autojoin'):
+		if self.local_config.get('irc.autojoin'):
+			for c in self.local_config.get('irc.autojoin'):
 				self.join(c)
 
 	def get_user(self, nick):

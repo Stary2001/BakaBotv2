@@ -18,8 +18,8 @@ class GooglePlugin(Plugin):
 
 	@command(commands, 'google', flags=[CommandFlags.ONE_PARAM])
 	def command_google(ctx, query):
-		k = ctx.bot.config.get('google.api_key')
-		customid = ctx.bot.config.get('google.cx')
+		k = ctx.bot.shared_config.get('google.api_key')
+		customid = ctx.bot.shared_config.get('google.cx')
 
 		r = requests.get("https://www.googleapis.com/customsearch/v1", params={'q': query, 'key': k, 'cx': customid})
 		if r.status_code == 200:

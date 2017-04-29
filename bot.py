@@ -53,17 +53,24 @@ class Bot:
 		global default_handlers
 		self.name = name
 		self.event_queue = asyncio.Queue()
-		self.config = Config('conf/networks/{name}.yml'.format(name=name))
 		self.running = True
 		self.handlers = default_handlers['bot'].copy()
-		if self.type:
-			self.handlers.update(default_handlers[self.type])	
+		if self.type and self.type in default_handlers:
+			self.handlers.update(default_handlers[self.type])
 		self.plugins = {}
 		self.plugin_modules = {}
 		self.commands = {}
 		self.users = {}
 		self.channels = {}
 		self.pool = None
+
+	def init_plugins(self):
+		autoload = self.local_config.get("autoload")
+		if autoload != None:
+			for p in autoload:
+			  self.load_plugin(p)
+		else:
+			self.load_plugin("admin")
 
 	def run(self, loop):
 		self.loop = loop
@@ -83,7 +90,6 @@ class Bot:
 				for k in plug.commands:
 					self.commands[k] = plug.commands[k]
 
-
 	async def handle(self, n, *args):
 		if n in self.handlers:
 			for a in self.handlers[n]:
@@ -95,32 +101,29 @@ class Bot:
 					a.f(self, *args)
 
 	def check_permissions(self, user, cmd, target):
-		allowed_groups = self.config.get('permissions.{}.groups'.format(cmd.name), [])
+		allowed_groups = self.local_config.get('permissions.{}.groups'.format(cmd.name), [])
 		allowed_groups = map(lambda x: self.get_group(x), allowed_groups)
 
 		for g in allowed_groups:
 			if g.check(user, target):
 				return True
 
-		cmd.allowed_users = self.config.get('permissions.{}.users'.format(cmd.name), [])
+		cmd.allowed_users = self.local_config.get('permissions.{}.users'.format(cmd.name), [])
 
-		for u in cmd.allowed_users:
-			print(user.account)
-			if user.account == u:
+		for allowed_id in cmd.allowed_users:
+			if self.user_has_id(user, allowed_id):
 				return True
 
 		return False
 
 	@callback('message', is_async = True)
 	async def command_handler(self, sender, target, content):
-		prefixes = self.config.get('irc.prefixes')
+		prefixes = self.local_config.get('prefixes')
 		for p in prefixes:
 			if content.startswith(p):
 				content = content[len(p):]
 				cmds = content.split('|')
 				cmds = list(map(lambda x: x.strip(), cmds))
-
-				print(cmds)
 
 				ret = []
 				try:
@@ -164,7 +167,7 @@ class Bot:
 
 					if ret != None:
 						for a in ret:
-							self.send_message(target, str(a))
+							self.send_message(target, a)
 				except Exception as e:
 					self.send_message(target, 'Exception thrown: "{}"'.format(str(e)))
 
@@ -177,6 +180,10 @@ class Bot:
 				return self.get_special_group(g)
 		else:
 			return self.groups[g]
+
+	def user_has_id(self, user, identifier):
+		""" override this. """
+		return False
 
 	def get_special_group(self, g):
 		""" override this """
