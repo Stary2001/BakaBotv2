@@ -116,6 +116,15 @@ class IRCBot(Bot):
 	def join(self, chan):
 		self.send_line("JOIN {}", chan)
 
+	def part(self, chan, msg=None):
+		if msg != None:
+			self.send_line("PART {}", chan)
+		else:
+			self.send_line("PART {} :{}", chan, msg)
+
+	def exit(self):
+		self.quit("Quitting...")
+
 	def quit(self, text):
 		self.send_line("QUIT :{}", text)
 
@@ -141,6 +150,8 @@ class IRCBot(Bot):
 
 			cmd = line.command.lower()
 			await self.handle(cmd, line)
+
+		self.who_coro.cancel()
 
 	async def who_thread(self):
 		while True:

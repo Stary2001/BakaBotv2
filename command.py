@@ -43,6 +43,9 @@ class CommandCtx():
 		self.sender = sender
 		self.queue = []
 
+		if self.target == bot.nick:
+			self.target = self.sender
+
 	def reply(self, text):
 		self.bot.send_message(self.target, text)
 

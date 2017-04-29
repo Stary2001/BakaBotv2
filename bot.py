@@ -76,6 +76,9 @@ class Bot:
 		self.loop = loop
 		loop.create_task(self.run_loop())
 
+	def exit(self):
+		""" override this... """
+
 	def load_plugin(self, n):
 		if n in self.plugin_modules:
 			importlib.reload(self.plugin_modules[n])
