@@ -59,10 +59,12 @@ class IRCServer():
 class IRCBot(Bot):
 	default_handlers = {}
 
-	def __init__(self, name):
+	def __init__(self, name, shared_config):
 		self.type = 'irc'
 		super().__init__(name)
-		self.config = Config('conf/networks/{name}.yml'.format(name=name))
+
+		self.shared_config = shared_config
+		self.local_config = Config('conf/networks/{name}.yml'.format(name=name))
 		self.init_plugins()
 
 		self.caps = {}
@@ -70,7 +72,7 @@ class IRCBot(Bot):
 		self.server = IRCServer()
 
 		self.authenticated = False
-		self.nick = self.config.get('irc.nickname')
+		self.nick = self.local_config.get('irc.nickname')
 		self.who_queue = asyncio.Queue()
 		self.who_wait = 2
 
@@ -120,9 +122,10 @@ class IRCBot(Bot):
 	async def run_loop(self):
 		self.who_coro = self.loop.create_task(self.who_thread())
 
-		self.sock_reader, self.sock_writer = await asyncio.open_connection(host=self.config.get('server.host'), port=self.config.get('server.port'), ssl=self.config.get('server.ssl'))
-		#if self.config.get('server.ssl') == True:
-		#	self.sock = ssl.wrap_socket(self.sock)
+		host = self.local_config.get('irc.server.host')
+		port = self.local_config.get('irc.server.port')
+		use_ssl = self.local_config.get('irc.server.ssl')
+		self.sock_reader, self.sock_writer = await asyncio.open_connection(host=host, port=port, ssl=use_ssl)
 
 		self.send_line("CAP LS")
 
@@ -169,10 +172,12 @@ class IRCBot(Bot):
 
 	@callback('irc/cap-done')
 	def cap_done(self):
-		if self.config.get('irc.password'):
+		if self.local_config.get('irc.password'):
 			self.send_line("PASS {pass}".format())
 		self.send_line("NICK {name}", name=self.nick)
-		self.send_line("USER {user} * * :{real}", user=self.config.get('irc.username'), real=self.config.get('irc.realname'))
+		irc_username = self.local_config.get('irc.username')
+		irc_realname = self.local_config.get('irc.realname')
+		self.send_line("USER {user} * * :{real}", user=irc_username, real=irc_username)
 
 	@callback('irc/004', ['param/1', 'param/2', 'param/3'])
 	def cb_myinfo(self, srv_name, srv_version, usermodes):
@@ -215,8 +220,8 @@ class IRCBot(Bot):
 
 	@callback('irc/connected')
 	def connected(self):
-		if self.config.get('irc.autojoin'):
-			for c in self.config.get('irc.autojoin'):
+		if self.local_config.get('irc.autojoin'):
+			for c in self.local_config.get('irc.autojoin'):
 				self.join(c)
 
 	def get_user(self, nick):

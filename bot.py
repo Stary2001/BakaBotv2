@@ -65,7 +65,7 @@ class Bot:
 		self.pool = None
 
 	def init_plugins(self):
-		autoload = self.config.get("autoload")
+		autoload = self.local_config.get("autoload")
 		if autoload != None:
 			for p in autoload:
 			  self.load_plugin(p)
@@ -101,14 +101,14 @@ class Bot:
 					a.f(self, *args)
 
 	def check_permissions(self, user, cmd, target):
-		allowed_groups = self.config.get('permissions.{}.groups'.format(cmd.name), [])
+		allowed_groups = self.local_config.get('permissions.{}.groups'.format(cmd.name), [])
 		allowed_groups = map(lambda x: self.get_group(x), allowed_groups)
 
 		for g in allowed_groups:
 			if g.check(user, target):
 				return True
 
-		cmd.allowed_users = self.config.get('permissions.{}.users'.format(cmd.name), [])
+		cmd.allowed_users = self.local_config.get('permissions.{}.users'.format(cmd.name), [])
 
 		for allowed_id in cmd.allowed_users:
 			if self.user_has_id(user, allowed_id):
@@ -118,7 +118,7 @@ class Bot:
 
 	@callback('message', is_async = True)
 	async def command_handler(self, sender, target, content):
-		prefixes = self.config.get('prefixes')
+		prefixes = self.local_config.get('prefixes')
 		for p in prefixes:
 			if content.startswith(p):
 				content = content[len(p):]

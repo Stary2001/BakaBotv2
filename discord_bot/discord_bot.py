@@ -17,20 +17,21 @@ class CustomDiscordClient(discord.Client):
 class DiscordBot(Bot):
     default_handlers = {}
 
-    def __init__(self, name):
+    def __init__(self, name, shared_config):
         self.type = 'discord'
         super().__init__(name)
 
-        self.config = Config('conf/discord.yml')
+        self.local_config = Config('conf/discord.yml')
+        self.shared_config = shared_config
         self.init_plugins()
 
         #perms = discord.Permissions.text()
         #perms.update(change_nicknames = True)
-        #print(discord.utils.oauth_url(self.config.get('discord.appid'), permissions=perms))
+        #print(discord.utils.oauth_url(self.local_config.get('discord.appid'), permissions=perms))
 
     async def run_loop(self):
         self.discord = CustomDiscordClient(self, loop = self.loop)
-        await self.discord.login(self.config.get('discord.token'))
+        await self.discord.login(self.local_config.get('discord.token'))
         self.loop.create_task(self.discord.connect())
 
     def send_message(self, target, text):
