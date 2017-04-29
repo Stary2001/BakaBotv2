@@ -10,12 +10,12 @@ class FactoidPlugin(Plugin):
 	@command(commands, 'setf')
 	def command_set_factoid(ctx, name, *value):
 		value = ' '.join(value)
-		ctx.bot.config.set('factoids.{}'.format(name), value)
-		ctx.bot.config.save()
+		ctx.bot.shared_config.set('factoids.{}'.format(name), value)
+		ctx.bot.shared_config.save()
 
 	@command(commands, 'f')
 	def command_set_factoid(ctx, name):
-		text = ctx.bot.config.get('factoids.{}'.format(name))
+		text = ctx.bot.shared_config.get('factoids.{}'.format(name))
 		if text != None:
 			ctx.reply(text)
 		else:
@@ -24,5 +24,5 @@ class FactoidPlugin(Plugin):
 	@command(commands, 'delf')
 	def command_del_factoid(ctx, name, *value):
 		value = ' '.join(value)
-		ctx.bot.config.remove('factoids.{}'.format(name))
-		ctx.bot.config.save()
+		ctx.bot.shared_config.remove('factoids.{}'.format(name))
+		ctx.bot.shared_config.save()

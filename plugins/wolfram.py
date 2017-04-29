@@ -28,7 +28,7 @@ class WolframPlugin(Plugin):
 
 	@command(commands, 'wolfram', flags=[CommandFlags.ONE_PARAM])
 	def command_google(ctx, query):
-		app = ctx.bot.config.get('wolfram.app_id')
+		app = ctx.bot.shared_config.get('wolfram.app_id')
 
 		r = requests.get("http://api.wolframalpha.com/v2/query", params={'appid': app, 'input': query, 'format': 'plaintext,image'})
 		if r.status_code == 200:

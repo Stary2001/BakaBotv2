@@ -15,9 +15,9 @@ except FileNotFoundError:
 	exit()
 
 for n in config.get('irc.networks'):
-	bots[n] = IRCBot(n)
+	bots[n] = IRCBot(n, shared_config = conf)
 
-bots['discord'] = DiscordBot('discord')
+bots['discord'] = DiscordBot('discord', shared_config = conf)
 
 loop = asyncio.get_event_loop()
 for n in bots:
