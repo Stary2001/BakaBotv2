@@ -31,7 +31,7 @@ class AdminPlugin(Plugin):
 
 		if where == 'local':
 			conf = ctx.bot.local_config
-		else:
+		elif where == 'shared':
 			conf = ctx.bot.shared_config
 		else:
 			usage()
