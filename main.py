@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
+from bot import Bot
 from config import Config
 from irc.irc_bot import IRCBot
 from discord_bot.discord_bot import DiscordBot, CustomDiscordClient
 
 import asyncio
 
-bots = {}
 config = None
 try:
     config = Config('conf/main.yml')
@@ -17,14 +17,14 @@ except FileNotFoundError:
 
 if config.get('bots.irc'):
     for n in config.get('bots.irc'):
-       bots[n] = IRCBot(n, shared_config = shared_conf)
+       Bot.add(n, IRCBot(n, shared_config = shared_conf))
 
 if config.get('bots.discord'):
-    bots['discord'] = DiscordBot('discord', shared_config = shared_conf)
+    Bot.add('discord', DiscordBot('discord', shared_config = shared_conf))
 
-if len(bots) != 0:
+if len(Bot.get_all()) != 0:
     loop = asyncio.get_event_loop()
-    for n in bots:
-        bots[n].run(loop)
+    for n in Bot.get_all():
+        Bot.get(n).run(loop)
 
     loop.run_forever()

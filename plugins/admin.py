@@ -1,4 +1,4 @@
-
+from bot import Bot
 from command import command, CommandFlags
 from plugin import Plugin
 import asyncio
@@ -15,7 +15,8 @@ class AdminPlugin(Plugin):
 
 	@command(commands, 'quit_all')
 	def command_quit_all(ctx):
-		ctx.bot.exit()
+		for b in Bot.get_all():
+			Bot.get(b).exit()
 		loop = asyncio.get_event_loop()
 		loop.stop()
 

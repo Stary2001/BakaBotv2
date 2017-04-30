@@ -197,3 +197,15 @@ class Bot:
 			send_message: Sends a message 'text' to 'target'.
 		"""
 		pass
+
+	__bots = {}
+	@staticmethod
+	def add(n, b):
+		Bot.__bots[n] = b
+
+	@staticmethod
+	def get(n):
+		return Bot.__bots[n]
+
+	def get_all():
+		return Bot.__bots
