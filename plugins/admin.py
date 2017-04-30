@@ -1,6 +1,7 @@
 
 from command import command, CommandFlags
 from plugin import Plugin
+import asyncio
 
 class AdminPlugin(Plugin):
 	commands = {}
@@ -12,6 +13,12 @@ class AdminPlugin(Plugin):
 	def command_quit(ctx, reason='Quitting...'):
 		ctx.quit(reason)
 
+	@command(commands, 'quit_all')
+	def command_quit_all(ctx):
+		ctx.bot.exit()
+		loop = asyncio.get_event_loop()
+		loop.stop()
+
 	@command(commands, 'load')
 	def command_load(ctx, name):
 		ctx.bot.load_plugin(name)
@@ -21,8 +28,8 @@ class AdminPlugin(Plugin):
 		ctx.bot.join(name)
 
 	@command(commands, 'part')
-	def command_part(ctx, name):
-		ctx.bot.part(name)
+	def command_part(ctx, name, msg=None):
+		ctx.bot.part(name, msg)
 
 	@command(commands, 'config')
 	def command_config(ctx, where, meth, what, val=None):
@@ -31,7 +38,7 @@ class AdminPlugin(Plugin):
 
 		if where == 'local':
 			conf = ctx.bot.local_config
-		else:
+		elif where == 'shared':
 			conf = ctx.bot.shared_config
 		else:
 			usage()
