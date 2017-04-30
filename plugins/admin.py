@@ -21,7 +21,7 @@ class AdminPlugin(Plugin):
 		for b in Bot.get_all():
 			Bot.get(b).exit()
 
-		await asyncio.sleep(2)
+		await asyncio.sleep(5)
 
 		loop = asyncio.get_event_loop()
 		loop.stop()
@@ -83,3 +83,7 @@ class AdminPlugin(Plugin):
 	@command(commands, 'plugins')
 	def command_plugins(ctx):
 		ctx.reply(",".join(list(ctx.bot.plugins.keys())))
+
+	@command(commands, 'py', flags=[CommandFlags.ONE_PARAM])
+	def command_python(ctx, cmd):
+		exec(cmd)
