@@ -12,11 +12,17 @@ class AdminPlugin(Plugin):
 	@command(commands, 'quit', flags=[CommandFlags.ONE_PARAM])
 	def command_quit(ctx, reason='Quitting...'):
 		ctx.quit(reason)
+		if len(Bot.get_all()) == 1:
+			loop = asyncio.get_event_loop()
+			loop.stop()
 
-	@command(commands, 'quit_all')
-	def command_quit_all(ctx):
+	@command(commands, 'quit_all', is_async = True)
+	async def command_quit_all(ctx):
 		for b in Bot.get_all():
 			Bot.get(b).exit()
+
+		await asyncio.sleep(2)
+
 		loop = asyncio.get_event_loop()
 		loop.stop()
 
