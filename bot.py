@@ -5,11 +5,11 @@ from functools import wraps
 from command import CommandCtx, CommandFlags, CommandNotFoundError, NoPermissionsError, AllGroup
 from collections import namedtuple
 
-Handler = namedtuple('Handler', ['is_async', 'f'])
+Handler = namedtuple('Handler', ['uses_self', 'is_async', 'f'])
 
 default_handlers = {'irc': {}, 'bot': {}}
 
-def callback(cb, params = None, is_async=False):
+def callback(cb, params = None, is_async=False, uses_self=True):
 	global default_handlers
 	namespace = None
 
@@ -43,7 +43,7 @@ def callback(cb, params = None, is_async=False):
 			else:
 				return f(self, *args, **kwargs)
 
-		handlers[cb] = handlers.get(cb, []) + [Handler(f=b, is_async=is_async)]
+		handlers[cb] = handlers.get(cb, []) + [Handler(f=b, is_async=is_async, uses_self=uses_self)]
 
 		return b
 	return a
@@ -63,6 +63,9 @@ class Bot:
 		self.users = {}
 		self.channels = {}
 		self.pool = None
+
+	def add_handler(self, n, f, is_async=False, uses_self=False):
+		self.handlers[n] = self.handlers.get(n, []) + [Handler(f=f, is_async=is_async, uses_self=uses_self)]
 
 	def init_plugins(self):
 		autoload = self.local_config.get("autoload")
@@ -97,11 +100,17 @@ class Bot:
 		if n in self.handlers:
 			for a in self.handlers[n]:
 				if a.is_async:
-					coro = a.f(self, *args)
+					if a.uses_self:
+						coro = a.f(self, *args)
+					else:
+						coro = a.f(*args)
 					if coro != None:
 						await coro
 				else:
-					a.f(self, *args)
+					if a.uses_self:
+						a.f(self, *args)
+					else:
+						a.f(*args)
 
 	def check_permissions(self, user, cmd, target):
 		allowed_groups = self.local_config.get('permissions.{}.groups'.format(cmd.name), [])

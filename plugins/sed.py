@@ -12,7 +12,7 @@ class SedPlugin(Plugin):
         self.bot = bot
 
         self.scrollback = {}
-        bot.handlers['message'] = [Handler(f=lambda self2,a,b,c: self.cb(a,b,c), is_async=True)] + bot.handlers['message']
+        bot.add_handler('message', self.cb, is_async=True, uses_self=False)
 
     queue_size = 100
 
