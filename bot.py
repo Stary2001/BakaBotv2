@@ -207,6 +207,12 @@ class Bot:
 		"""
 		pass
 
+	def get_channel(self, chan):
+		"""
+			returns a channel obj for 'chan'.
+		"""
+		pass
+
 	__bots = {}
 	@staticmethod
 	def add(n, b):

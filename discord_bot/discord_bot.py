@@ -43,3 +43,6 @@ class DiscordBot(Bot):
     def user_has_id(self, user, id):
         if user.id == id or "<@{}>".format(user.id) == id: # TODO: hack
             return True
+
+    def get_channel(self, id):
+        return self.discord.get_channel(id)

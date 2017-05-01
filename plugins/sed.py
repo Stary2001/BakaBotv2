@@ -12,11 +12,11 @@ class SedPlugin(Plugin):
         self.bot = bot
 
         self.scrollback = {}
-        bot.add_handler('message', self.cb, is_async=True, uses_self=False)
+        bot.add_handler('message', self.cb, is_async=False, uses_self=False)
 
     queue_size = 100
 
-    async def cb(self, sender, target, content):
+    def cb(self, sender, target, content):
         # todo: sed disable.
 
         if not target in self.scrollback:
