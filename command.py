@@ -32,6 +32,7 @@ class Command():
 		self.flags = flags
 		self.type = bot
 		self.is_async = is_async
+		self.plugin = None
 
 	def __call__(self, *args, **kwargs):
 		return self.f(*args, **kwargs)
@@ -57,4 +58,5 @@ class CommandCtx():
 		self.bot.quit(text)
 
 class CommandFlags:
-	ONE_PARAM = 1
+	ONE_PARAM = 1,
+	PLUGIN = 2

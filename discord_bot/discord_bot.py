@@ -29,8 +29,15 @@ class DiscordBot(Bot):
         #perms.update(change_nicknames = True)
         #print(discord.utils.oauth_url(self.local_config.get('discord.appid'), permissions=perms))
 
+    def exit(self, msg=None):
+        self.loop.create_task(self.discord.logout())
+        Bot.exit(self)
+
     async def run_loop(self):
         self.discord = CustomDiscordClient(self, loop = self.loop)
+        self.discord_voice = None
+        self.current_voice_stream = None
+
         await self.discord.login(self.local_config.get('discord.token'))
         self.loop.create_task(self.discord.connect())
 

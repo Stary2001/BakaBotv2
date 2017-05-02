@@ -122,9 +122,6 @@ class IRCBot(Bot):
 		else:
 			self.send_line("PART {} :{}", chan, msg)
 
-	def exit(self):
-		self.quit("Quitting...")
-
 	def quit(self, text):
 		self.send_line("QUIT :{}", text)
 
@@ -172,6 +169,11 @@ class IRCBot(Bot):
 	def user_has_id(self, user, id):
 		if user.account == id:
 			return True
+
+	def exit(self, msg="Quitting.."):
+		self.quit(msg)
+		print("??")
+		Bot.exit(self)
 
 	@callback('irc/cap', ['param/1', 'param/2'], is_async=True)
 	def cb_cap(self, event, what):

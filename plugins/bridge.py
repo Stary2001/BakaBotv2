@@ -24,11 +24,11 @@ class BridgePlugin(Plugin):
         b = Bot.get(c[0])
         return {'bot': b, 'chan': b.get_channel(c[1]) }
 
-    @command(commands, 'add_bridge')
-    def command_add_bridge(ctx, name, local, remote): # sends from local to remote.
+    @command(commands, 'add_bridge', flags=[CommandFlags.PLUGIN])
+    def command_add_bridge(self, ctx, name, local, remote): # sends from local to remote.
         ctx.bot.local_config.set('bridges.{}'.format(name), {'local': local, 'remote': remote})
         ctx.bot.local_config.save()
-        #self.mapping[bot.get_channel(local)] = BridgePlugin.get_channel(remote)
+        self.mapping[ctx.bot.get_channel(local)] = BridgePlugin.get_channel(remote)
 
     def msg_handler(self, bot, sender, target, content):
         try:

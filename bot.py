@@ -79,8 +79,9 @@ class Bot:
 		self.loop = loop
 		loop.create_task(self.run_loop())
 
-	def exit(self):
-		""" override this... """
+	def exit(self, msg=None):
+		del Bot.get_all()[self.name]
+		""" call super() after quitting in a subclass. """
 
 	def load_plugin(self, n):
 		if n in self.plugin_modules:
@@ -95,6 +96,7 @@ class Bot:
 				plug = self.plugins[n]
 				for k in plug.commands:
 					self.commands[k] = plug.commands[k]
+					self.commands[k].plugin = plug
 
 	async def handle(self, n, *args):
 		if n in self.handlers:
@@ -166,10 +168,16 @@ class Bot:
 							other += ret
 							ctx = CommandCtx(self, target, sender)
 
-							if cmd.is_async:
-								ret = await cmd.f(ctx, *other)
+							args = []
+							if cmd.flags != None and CommandFlags.PLUGIN in cmd.flags:
+								args = [cmd.plugin, ctx]
 							else:
-								ret = cmd.f(ctx, *other)
+								args = [ctx]
+
+							if cmd.is_async:
+								ret = await cmd.f(*args, *other)
+							else:
+								ret = cmd.f(*args, *other)
 
 							if ret == None:
 								ret = []
@@ -214,6 +222,7 @@ class Bot:
 		pass
 
 	__bots = {}
+	shared_config = None
 	@staticmethod
 	def add(n, b):
 		Bot.__bots[n] = b
@@ -224,3 +233,12 @@ class Bot:
 
 	def get_all():
 		return Bot.__bots
+
+	@staticmethod
+	def start(t, name):
+		Bot.add(name, t(name, shared_config=Bot.shared_config))
+		Bot.get(name).run(asyncio.get_event_loop())
+
+	@staticmethod
+	def stop(name):
+		Bot.get(name).exit()

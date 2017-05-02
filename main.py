@@ -10,21 +10,18 @@ import asyncio
 config = None
 try:
     config = Config('conf/main.yml')
-    shared_conf = Config('conf/shared.yml')
+    Bot.shared_config = Config('conf/shared.yml')
 except FileNotFoundError:
     print("config not found :(")
     exit()
 
 if config.get('bots.irc'):
     for n in config.get('bots.irc'):
-       Bot.add(n, IRCBot(n, shared_config = shared_conf))
+       Bot.start(IRCBot, n)
 
 if config.get('bots.discord'):
-    Bot.add('discord', DiscordBot('discord', shared_config = shared_conf))
+    Bot.start(DiscordBot, 'discord')
 
 if len(Bot.get_all()) != 0:
     loop = asyncio.get_event_loop()
-    for n in Bot.get_all():
-        Bot.get(n).run(loop)
-
     loop.run_forever()
