@@ -171,9 +171,8 @@ class IRCBot(Bot):
 			return True
 
 	def exit(self, msg="Quitting.."):
-		self.quit(msg)
-		print("??")
 		Bot.exit(self)
+		self.quit(msg)
 
 	@callback('irc/cap', ['param/1', 'param/2'], is_async=True)
 	def cb_cap(self, event, what):

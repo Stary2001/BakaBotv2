@@ -30,8 +30,8 @@ class DiscordBot(Bot):
         #print(discord.utils.oauth_url(self.local_config.get('discord.appid'), permissions=perms))
 
     def exit(self, msg=None):
-        self.loop.create_task(self.discord.logout())
         Bot.exit(self)
+        self.loop.create_task(self.discord.logout())
 
     async def run_loop(self):
         self.discord = CustomDiscordClient(self, loop = self.loop)
