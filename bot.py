@@ -189,7 +189,7 @@ class Bot:
 						for a in ret:
 							self.send_message(target, a)
 				except Exception as e:
-					self.send_message(target, 'Exception thrown: "{}"'.format(str(e)))
+					self.send_message(target, '{} was thrown: "{}"'.format(e.__class__.__name__, str(e)))
 
 	def get_group(self, g):
 		if g.startswith('special/'):
