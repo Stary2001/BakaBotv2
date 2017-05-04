@@ -3,6 +3,11 @@ from plugin import Plugin
 import discord
 import asyncio
 import datetime
+import youtube_dl
+import concurrent.futures
+import functools
+import collections
+from util import pretty_time
 
 class DJPlugin(Plugin):
     commands = {}
@@ -13,38 +18,39 @@ class DJPlugin(Plugin):
             return
         self.bot = bot
 
-        self.playlist = asyncio.Queue()
+        self.playlist = collections.deque()
         self.playlist_coro = asyncio.get_event_loop().create_task(self.do_playlist())
+        self.playlist_pull_event = asyncio.Event()
         self.announce_channel = None
         self.volume = 1.0
+
+        # todo: centralised executor.
+        self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
 
     def exit(self):
         self.playlist_coro.cancel()
 
     async def do_playlist(self):
         while True:
-            item = await self.playlist.get()
+            await self.playlist_pull_event.wait()
+            item = self.playlist.popleft()
+
+            if len(self.playlist) == 0:
+                self.playlist_pull_event.clear()
 
             if self.bot.discord_voice:
                 if item[0] == 'yt':
                     playing_event = asyncio.Event()
+                    item = item[1]
 
-                    player = await self.bot.discord_voice.create_ytdl_player(item[1], after=lambda: playing_event.set())
+                    player = self.bot.discord_voice.create_ffmpeg_player(item['url'], after=lambda: playing_event.set())
                     self.bot.current_voice_stream = player
                     player.start()
                     player.volume = self.volume
 
-                    hours, min_sec = divmod(player.duration, 3600)
-                    minutes, seconds = divmod(min_sec, 60)
+                    duration = pretty_time(item.get('duration'))
 
-                    if hours != 0:
-                        duration = "{:02d}h{:02d}m{:02d}s".format(hours, minutes, seconds)
-                    elif minutes != 0:
-                        duration = "{:02d}m{:02d}s".format(minutes, seconds)
-                    else:
-                        duration = "{:02d}s".format(seconds)
-
-                    self.bot.send_message(self.announce_channel, 'Now playing: {} ({})'.format(player.title, duration))
+                    self.bot.send_message(self.announce_channel, 'Now playing: {} ({})'.format(item.get('title'), duration))
                     await playing_event.wait()
 
     @command(commands, 'join_voice', is_async = True)
@@ -58,10 +64,29 @@ class DJPlugin(Plugin):
         else:
             ctx.bot.discord_voice = await ctx.bot.discord.join_voice_channel(channel)
     
-    @command(commands, 'play', is_async = True, flags=[CommandFlags.PLUGIN])
-    async def command_play(self, ctx, url):
+    @command(commands, 'playlist', flags=[CommandFlags.PLUGIN])
+    def command_playlist(self, ctx):
+        if len(self.playlist) != 0:
+            ctx.reply("\n".join(map(lambda a: "{} ({})".format(a[1].get('title'), pretty_time(a[1].get('duration'))), self.playlist)))
+        else:
+            ctx.reply("The playlist is empty!")
+
+    def do_ytdl(self, url):
+        ydl_opts = {'format': 'webm[abr>0]/bestaudio/best'}
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            if 'entries' in info:
+                for i in info['entries']:
+                    self.playlist.append(('yt', i))
+            else:
+                self.playlist.append(('yt', info))
+
+        self.playlist_pull_event.set()
+
+    @command(commands, 'add', is_async = True, flags=[CommandFlags.PLUGIN])
+    async def command_add(self, ctx, url):
         self.announce_channel = ctx.target
-        await self.playlist.put(('yt', url))
+        await ctx.bot.loop.run_in_executor(self.thread_executor, functools.partial(self.do_ytdl, url))
 
     @command(commands, 'pause')
     def command_pause(ctx):
@@ -76,10 +101,10 @@ class DJPlugin(Plugin):
         ctx.bot.current_voice_stream.stop()
         ctx.bot.current_voice_stream = None
 
-    @command(commands, 'stop')
-    def command_stop(ctx):
-        while not self.playlist.empty(): # Clear the playlist.
-            self.playlist.get_nowait()
+    @command(commands, 'stop', flags=[CommandFlags.PLUGIN])
+    def command_stop(self, ctx):
+        self.playlist_pull_event.clear()
+        self.playlist.clear()
 
         ctx.bot.current_voice_stream.stop()
         ctx.bot.current_voice_stream = None
