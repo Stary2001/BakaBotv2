@@ -19,7 +19,9 @@ class AdminPlugin(Plugin):
 
 	@command(commands, 'quit_all', is_async = True)
 	async def command_quit_all(ctx):
-		for b in Bot.get_all():
+		names = list(Bot.get_all())
+		
+		for b in names:
 			Bot.get(b).exit()
 
 		await asyncio.sleep(5)

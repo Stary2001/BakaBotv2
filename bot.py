@@ -89,6 +89,7 @@ class Bot:
 
 	def load_plugin(self, n):
 		if n in self.plugin_modules:
+			self.plugins[n].exit()
 			importlib.reload(self.plugin_modules[n])
 		else:
 			self.plugin_modules[n] = importlib.import_module('plugins.' + n)
