@@ -64,7 +64,7 @@ class IRCBot(Bot):
 		super().__init__(name)
 
 		self.shared_config = shared_config
-		self.local_config = Config('conf/networks/{name}.yml'.format(name=name))
+		self.local_config = Config('conf/irc/{name}.yml'.format(name=name))
 		self.init_plugins()
 
 		self.caps = {}
@@ -248,6 +248,7 @@ class IRCBot(Bot):
 	@callback('irc/privmsg', ['sender', 'param/0', 'param/1'], is_async=True)
 	def command_handler(self, sender, target, content):
 		target = self.get_channel(target)
+		print(target)
 		return self.handle('message', sender, target, content)
 
 	@callback('irc/join', ['param/0', 'sender'], is_async = True)
