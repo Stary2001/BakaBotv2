@@ -247,8 +247,10 @@ class IRCBot(Bot):
 
 	@callback('irc/privmsg', ['sender', 'param/0', 'param/1'], is_async=True)
 	def command_handler(self, sender, target, content):
-		target = self.get_channel(target)
-		print(target)
+		if target == self.nick: # pm?
+			target = sender
+		else:
+			target = self.get_channel(target)
 		return self.handle('message', sender, target, content)
 
 	@callback('irc/join', ['param/0', 'sender'], is_async = True)
