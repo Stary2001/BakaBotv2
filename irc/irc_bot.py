@@ -171,7 +171,6 @@ class IRCBot(Bot):
 			return True
 
 	def exit(self, msg="Quitting.."):
-		Bot.exit(self)
 		self.quit(msg)
 
 	@callback('irc/cap', ['param/1', 'param/2'], is_async=True)
@@ -278,16 +277,16 @@ class IRCBot(Bot):
 
 	@callback('irc/quit', ['sender'])
 	def cb_quit(self, user):
-		if user.nick == self.nick:
-			# ok, we ... QUIT??
-			pass
-		else:
-			for chan in user.channels:
-				c = self.get_channel(chan)
-				c.users.remove(user)
-				if user.nick in c.user_modes:
-					del c.user_modes[user.nick]
-			del self.users[user.nick]
+		for chan in user.channels:
+			c = self.get_channel(chan)
+			c.users.remove(user)
+			if user.nick in c.user_modes:
+				del c.user_modes[user.nick]
+		del self.users[user.nick]
+
+	@callback('irc/error') # We will always get an ERROR on disconnect (like ERROR :Closing Link: ip (Client Quit) on quit or so)
+	def cb_error(self):
+		Bot.exit(self)
 
 	@callback('irc/352', ['param/1', 'param/2', 'param/3', 'param/4', 'param/5', 'param/6', 'param/7'])
 	@callback('irc/354', ['param/1', 'param/2', 'param/3', 'param/4', 'param/5', 'param/6', 'param/7', 'param/8'])

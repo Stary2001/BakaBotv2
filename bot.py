@@ -80,12 +80,12 @@ class Bot:
 		loop.create_task(self.run_loop())
 
 	def exit(self, msg=None):
+		""" call super() before quitting in a subclass. """
 		for name in self.plugins:
 			plug = self.plugins[name]
 			plug.exit()
 
 		del Bot.get_all()[self.name]
-		""" call super() before quitting in a subclass. """
 
 	def load_plugin(self, n):
 		if n in self.plugin_modules:
