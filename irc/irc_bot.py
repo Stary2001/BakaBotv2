@@ -288,7 +288,7 @@ class IRCBot(Bot):
 		del self.users[user.nick]
 
 	@callback('irc/error') # We will always get an ERROR on disconnect (like ERROR :Closing Link: ip (Client Quit) on quit or so)
-	def cb_error(self):
+	def cb_error(self, message):
 		Bot.exit(self)
 
 	@callback('irc/352', ['param/1', 'param/2', 'param/3', 'param/4', 'param/5', 'param/6', 'param/7'])
