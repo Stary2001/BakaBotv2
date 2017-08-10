@@ -9,7 +9,7 @@ class IPInfo:
 
 	def __str__(self):
 		s = self.blob['ip']
-		if self.blob['hostname'] != 'No Hostname':
+		if 'hostname' in self.blob and self.blob['hostname'] != 'No Hostname':
 			s += " (" + self.blob['hostname'] + ")"
 		if self.blob['city'] != '':
 			s += " in {}, {}, {}".format(self.blob['city'], self.blob['region'], self.blob['country'])
